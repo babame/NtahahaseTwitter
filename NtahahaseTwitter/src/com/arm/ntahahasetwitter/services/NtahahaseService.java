@@ -14,7 +14,7 @@ public class NtahahaseService extends Service {
 
 	private ITimelineService.Stub mService2Timeline;
 
-	private TwitterAble twitterAble;
+	private Twitterable twitterAble;
 	private NtahahaseConfig mConfig;
 
 	@Override
@@ -39,7 +39,7 @@ public class NtahahaseService extends Service {
 
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-		twitterAble = new TwitterAbleImp(mConfig, getContentResolver());
+		twitterAble = new TwitterableImp(mConfig, getContentResolver());
 		Log.i(TAG, "onStartCommand");
 		return START_STICKY;
 	}

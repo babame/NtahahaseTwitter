@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.IBinder;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.LoaderManager;
@@ -16,6 +15,7 @@ import android.util.Log;
 import android.widget.ListView;
 
 import com.arm.ntahahasetwitter.data.TimelineProvider;
+import com.arm.ntahahasetwitter.data.TimelineProvider.TimelineConstant;
 import com.arm.ntahahasetwitter.services.ITimelineService;
 import com.arm.ntahahasetwitter.services.NtahahaseService;
 import com.arm.ntahahasetwitter.services.TimelineServiceAdapter;
@@ -30,14 +30,14 @@ public class TimelineActivity extends FragmentActivity implements LoaderManager.
 	private TimelineServiceAdapter timelineAdapter;
 	
 	private TimelineAdapter adapter;
-	private Handler mHandler;
+	
+	private static final String[] projection = { TimelineConstant.T_ID + " as _id", TimelineConstant.T_CREATED_AT, TimelineConstant.T_USER, TimelineConstant.T_USER_SCREEN, TimelineConstant.T_TEXT };
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_timeline);
 		ListView lTimeline = (ListView) findViewById(R.id.list_timeline);
-		mHandler = new Handler();
 
 		TCLImageLoader imageLoader = new TCLImageLoader(this);
 		adapter = new TimelineAdapter(this, 0, null, CursorAdapter.FLAG_REGISTER_CONTENT_OBSERVER, imageLoader);
@@ -64,6 +64,7 @@ public class TimelineActivity extends FragmentActivity implements LoaderManager.
 	protected void onStop() {
 		super.onStop();
 		Log.i(TAG, "onStop");
+		adapter.getCursor().close();
 	}
 
 	@Override
@@ -89,13 +90,7 @@ public class TimelineActivity extends FragmentActivity implements LoaderManager.
 			public void onServiceConnected(ComponentName name, IBinder service) {
 				timelineAdapter = new TimelineServiceAdapter(
 						ITimelineService.Stub.asInterface(service));
-				mHandler.postDelayed(new Runnable() {
-					
-					@Override
-					public void run() {
-						timelineAdapter.fetchTimeline();
-					}
-				}, 1500);
+				timelineAdapter.fetchTimeline();
 			}
 		};
 		startService(mNtahahaseService);
@@ -104,7 +99,7 @@ public class TimelineActivity extends FragmentActivity implements LoaderManager.
 
 	@Override
 	public Loader<Cursor> onCreateLoader(int arg0, Bundle arg1) {
-		CursorLoader cursorLoader = new CursorLoader(this, TimelineProvider.CONTENT_URI, null, null, null, null);
+		CursorLoader cursorLoader = new CursorLoader(this, TimelineProvider.CONTENT_URI, projection, null, null, null);
 		return cursorLoader;
 	}
 
