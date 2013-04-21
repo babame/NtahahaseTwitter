@@ -1,7 +1,7 @@
 package com.arm.ntahahasetwitter.services;
 
 /**
-* IPC interface for methods on XMPPService called by an activity
+* IPC interface for methods on NtahahaseService called by an activity
 */
 
 interface ITimelineService {
