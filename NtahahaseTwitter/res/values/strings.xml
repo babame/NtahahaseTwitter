@@ -4,5 +4,16 @@
     <string name="app_name">NtahahaseTwitter</string>
     <string name="desc_userPict">User Picture</string>
     <string name="label_timeline">Timeline</string>
+    <string name="cDesc_userImg">User Image</string>
+    <string name="cDesc_twitPict">Status Picture</string>
 
+    <string name="open">Open</string>
+    <string name="googlePlay">Google Play</string>
+    <string name="uninstall">Uninstall</string>
+    <string name="statusHint">Please enter your 140-character status</string>
+    <string name="buttonUpdateStatus">Update</string>
+    <string name="label_status">Status Update</string>
+    <string name="add_location">Add Location</string>
+    <string name="take_photo">Take Photo</string>
+    <string name="add_image">Add Image</string>
 </resources>

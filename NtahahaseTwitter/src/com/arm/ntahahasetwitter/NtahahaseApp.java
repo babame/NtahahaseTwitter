@@ -5,6 +5,8 @@ import android.util.Log;
 
 public class NtahahaseApp extends Application {
 	private static final String TAG = NtahahaseApp.class.getSimpleName();
+	
+	private boolean serviceRunning;
 
 	@Override
 	public void onCreate() {
@@ -22,5 +24,13 @@ public class NtahahaseApp extends Application {
 	public void onTerminate() {
 		super.onTerminate();
 		Log.i(TAG, "onTerminate");
+	}
+	
+	public boolean isServiceRunning() {
+		return serviceRunning;
+	}
+
+	public void setServiceRunning(boolean serviceRunning) {
+		this.serviceRunning = serviceRunning;
 	}
 }

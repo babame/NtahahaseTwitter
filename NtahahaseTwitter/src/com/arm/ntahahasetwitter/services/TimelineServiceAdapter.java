@@ -11,9 +11,17 @@ public class TimelineServiceAdapter {
 		this.timelineServiceStub = timelineServiceStub;
 	}
 	
+	public void fetchTimeline(int page, int count, long sinceId, long maxId) {
+		try {
+			timelineServiceStub.fetchStatus(page, count, sinceId, maxId);
+		} catch (RemoteException e) {
+			Log.e(TAG, "caught RemoteException: " + e.getMessage());
+		}
+	}
+
 	public void fetchTimeline() {
 		try {
-			timelineServiceStub.fetchStatus();
+			timelineServiceStub.futchStatus();
 		} catch (RemoteException e) {
 			Log.e(TAG, "caught RemoteException: " + e.getMessage());
 		}

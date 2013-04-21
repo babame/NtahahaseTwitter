@@ -1,8 +1,16 @@
 package com.arm.ntahahasetwitter.services;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.io.StreamCorruptedException;
 import java.util.List;
 
 import twitter4j.HashtagEntity;
+import twitter4j.MediaEntity;
 import twitter4j.Paging;
 import twitter4j.Status;
 import twitter4j.Twitter;
@@ -53,8 +61,17 @@ public class TwitterableImp implements Twitterable {
 	}
 
 	@Override
-	public void fetchStatus() {
-		new AsyncFetch().execute();
+	public void fetchStatus(int page, int count, long sinceId, long maxId) {
+		Paging paging = new Paging();
+		if (page > 0)
+			paging.setPage(page);
+		if (count > 0)
+			paging.setCount(count);
+		if (sinceId > 0)
+			paging.setSinceId(sinceId);
+		if (maxId > 0)
+			paging.setMaxId(maxId);
+		new AsyncFetch().execute(paging);
 	}
 
 	private int updateTwitEntryInDB(final Status status) {
@@ -75,124 +92,187 @@ public class TwitterableImp implements Twitterable {
 			Log.d(TAG, "tryToAddTwitToDB(): " + ret.getLastPathSegment());
 	}
 
-	private void insertTwitMentions2DB(final ContentValues values) {
-		Uri ret = mContentResolver.insert(TimelineProvider.TWIT_MENTIONS_URI,
-				values);
-		if (BuildConfig.DEBUG)
-			Log.d(TAG, "insertTwitMentions2DB(): " + ret.getLastPathSegment());
-	}
-
-	private int insertMentionEntity2DB(final UserMentionEntity mention) {
-		final ContentValues values = getContentValuesForMentionEntity(mention);
-		Uri ret = mContentResolver.insert(TimelineProvider.MENTION_URI, values);
-		if (BuildConfig.DEBUG)
-			Log.d(TAG, "insertMentionEntity2DB(): " + ret.getLastPathSegment());
-		return Integer.parseInt(ret.getLastPathSegment());
-	}
-
-	private int insertHashTagEntity2DB(final HashtagEntity hashtag) {
-		final ContentValues values = getContentValuesForHashEntity(hashtag);
-		Uri ret = mContentResolver.insert(TimelineProvider.HASHTAG_URI, values);
-		if (BuildConfig.DEBUG)
-			Log.d(TAG, "insertHashtagEntity2DB(): " + ret.getLastPathSegment());
-		return Integer.parseInt(ret.getLastPathSegment());
-	}
-
-	private void insertTwitHashtag2DB(final ContentValues values) {
-		Uri ret = mContentResolver.insert(TimelineProvider.TWIT_HASHTAGS_URI,
-				values);
-		if (BuildConfig.DEBUG)
-			Log.d(TAG, "insertTwitHashtag2DB(): " + ret.getLastPathSegment());
-	}
-
-	private int insertUrlEntity2DB(final URLEntity url) {
-		final ContentValues values = getContentValuesForUrlEntity(url);
-		Uri ret = mContentResolver.insert(TimelineProvider.URL_URI, values);
-		if (BuildConfig.DEBUG)
-			Log.d(TAG, "insertUrlEntity2DB(): " + ret.getLastPathSegment());
-		return Integer.parseInt(ret.getLastPathSegment());
-	}
-
-	private void insertTwitUrl2DB(final ContentValues values) {
-		Uri ret = mContentResolver
-				.insert(TimelineProvider.TWIT_URL_URI, values);
-		if (BuildConfig.DEBUG)
-			Log.d(TAG, "insertTwitUrl2DB(): " + ret.getLastPathSegment());
-	}
-
 	private ContentValues getContentValuesForTimelineEntry(final Status entry) {
 		final ContentValues values = new ContentValues();
 		values.put(TimelineConstant.T_ID, entry.getId());
 		values.put(TimelineConstant.T_CREATED_AT, entry.getCreatedAt()
 				.getTime());
-		values.put(TimelineConstant.T_USER, entry.getUser().getName());
-		values.put(TimelineConstant.T_USER_SCREEN, entry.getUser()
-				.getScreenName());
+		if (entry.isRetweet()) {
+			values.put(TimelineConstant.T_USER_SCREEN, entry
+					.getRetweetedStatus().getUser().getScreenName());
+
+			values.put(TimelineConstant.T_USER, entry.getRetweetedStatus()
+					.getUser().getName());
+		} else {
+			values.put(TimelineConstant.T_USER_SCREEN, entry.getUser()
+					.getScreenName());
+
+			values.put(TimelineConstant.T_USER, entry.getUser().getName());
+		}
 		values.put(TimelineConstant.T_TEXT, entry.getText());
+		values.put(TimelineConstant.T_IS_RETWEET, entry.isRetweet());
+		String[] tokens;
+		UserMentionEntity[] mentionEntities = null;
+		HashtagEntity[] hashTagEntities = null;
+		if (entry.isRetweet()) {
+			tokens = entry.getRetweetedStatus().getText().split(" ");
+			if (entry.getRetweetedStatus().getUserMentionEntities().length > 0)
+				mentionEntities = entry.getRetweetedStatus()
+						.getUserMentionEntities();
+			if (entry.getRetweetedStatus().getHashtagEntities().length > 0)
+				hashTagEntities = entry.getRetweetedStatus().getHashtagEntities();
+		} else {
+			tokens = entry.getText().split(" ");
+			if (entry.getUserMentionEntities().length > 0)
+				mentionEntities = entry.getUserMentionEntities();
+			if (entry.getHashtagEntities().length > 0)
+				hashTagEntities = entry.getHashtagEntities();
+		}
+		StringBuilder builder = new StringBuilder();
+		for (String token : tokens) {
+			boolean found = false;
+			if (token.equals(" "))
+				break;
+			if (hashTagEntities != null) {
+				for (HashtagEntity he : hashTagEntities) {
+					String heText = "#" + he.getText();
+					if (heText != null && token.contains(heText)) {
+						int heStart = token.indexOf(heText);
+						if (heStart > 0)
+							builder.append(token.substring(0, heStart));
+						builder.append("^^");
+						builder.append(heText);
+						builder.append("^^");
+						if (token.length() > heText.length())
+							builder.append(token.substring(heStart + heText.length(), token.length()));
+						found = true;
+						break;
+					}
+				}
+			}
+			if (!found && mentionEntities != null) {
+				for (UserMentionEntity ume : mentionEntities) {
+					String umeName = "@" + ume.getScreenName();
+					if (umeName != null && token.contains(umeName)) {
+						int umeStart = token.indexOf(umeName);
+						if (umeStart > 0)
+							builder.append(token.substring(0,
+									umeStart));
+						builder.append("*#");
+						builder.append(umeName);
+						builder.append("*#");
+						if (token.length() > umeName.length())
+							builder.append(token.substring(umeStart + umeName.length(), token.length()));
+						found = true;
+						break;
+					}
+				}
+			}
+			if (!found && entry.getMediaEntities().length > 0) {
+				for (MediaEntity me : entry.getMediaEntities()) {
+					String meURL = me.getURL();
+					if (meURL != null && meURL.equals(token)
+							&& me.getDisplayURL() != null) {
+						builder.append("**");
+						builder.append(me.getDisplayURL());
+						builder.append("**");
+						found = true;
+						break;
+					}
+				}
+			}
+			if (!found && entry.getURLEntities().length > 0) {
+				for (URLEntity ue : entry.getURLEntities()) {
+					String ueURL = ue.getURL();
+					if (ueURL != null && ueURL.equals(token)
+							&& ue.getDisplayURL() != null) {
+						builder.append("**");
+						builder.append(ue.getDisplayURL());
+						builder.append("**");
+						found = true;
+						break;
+					}
+				}
+			}
+			if (!found)
+				builder.append(token);
+
+			builder.append(" ");
+		}
+		values.put(TimelineConstant.T_SPANNED_TEXT, builder.toString());
+		/* User Mentions Entity */
+		UserMentionEntity[] mentions = entry.getUserMentionEntities();
+		if (mentions.length > 0) {
+			try {
+				values.put(TimelineConstant.T_MENTION_ENTYTY,
+						serializeObject(mentions));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		/* HashTag Entity */
+		HashtagEntity[] hashtags = entry.getHashtagEntities();
+		if (hashtags.length > 0) {
+			try {
+				values.put(TimelineConstant.T_HASHTAG_ENTITY,
+						serializeObject(hashtags));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		/* URL Entity */
+		URLEntity[] urls = entry.getURLEntities();
+		if (urls.length > 0) {
+			try {
+				values.put(TimelineConstant.T_URL_ENTITY, serializeObject(urls));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		/* Media Entity */
+		MediaEntity[] medias = entry.getMediaEntities();
+		if (medias.length > 0) {
+			try {
+				values.put(TimelineConstant.T_MEDIA_ENTITY,
+						serializeObject(medias));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 		return values;
 	}
 
-	private ContentValues getContentValuesForMentionEntity(
-			final UserMentionEntity mention) {
-		final ContentValues values = new ContentValues();
-		values.put(TimelineConstant.M_MID, mention.getId());
-		values.put(TimelineConstant.M_U_SN, mention.getScreenName());
-		values.put(TimelineConstant.M_START, mention.getStart());
-		values.put(TimelineConstant.M_END, mention.getEnd());
-		return values;
+	private byte[] serializeObject(Object o) throws IOException {
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		byte[] buf;
+		ObjectOutput out = new ObjectOutputStream(bos);
+		out.writeObject(o);
+		out.close();
+
+		// Get the bytes of the serialized object
+		buf = bos.toByteArray();
+		bos.close();
+		return buf;
 	}
 
-	private ContentValues getContentValuesForTwitMentions(final long twit_id,
-			final long mention_id) {
-		final ContentValues values = new ContentValues();
-		values.put(TimelineConstant.T_ID, twit_id);
-		values.put(TimelineConstant.M_ID, mention_id);
-		return values;
+	public static Object deserializeObject(byte[] b)
+			throws StreamCorruptedException, IOException,
+			ClassNotFoundException {
+		ObjectInputStream in = new ObjectInputStream(
+				new ByteArrayInputStream(b));
+		Object object = in.readObject();
+		in.close();
+
+		return object;
 	}
 
-	private ContentValues getContentValuesForHashEntity(
-			final HashtagEntity hashtag) {
-		final ContentValues values = new ContentValues();
-		values.put(TimelineConstant.H_START, hashtag.getStart());
-		values.put(TimelineConstant.H_END, hashtag.getEnd());
-		values.put(TimelineConstant.H_TEXT, hashtag.getText());
-		return values;
-	}
-
-	private ContentValues getContentValuesForTwitHashtags(final long twit_id,
-			final long hashtag_id) {
-		final ContentValues values = new ContentValues();
-		values.put(TimelineConstant.T_ID, twit_id);
-		values.put(TimelineConstant.H_ID, hashtag_id);
-		return values;
-	}
-
-	private ContentValues getContentValuesForUrlEntity(final URLEntity url) {
-		final ContentValues values = new ContentValues();
-		values.put(TimelineConstant.U_URL, url.getURL());
-		values.put(TimelineConstant.U_DISPLAY, url.getDisplayURL());
-		values.put(TimelineConstant.U_EXPANDED, url.getExpandedURL());
-		values.put(TimelineConstant.U_START, url.getStart());
-		values.put(TimelineConstant.U_END, url.getEnd());
-		return values;
-	}
-
-	private ContentValues getContentValuesForTwitUrls(final long twit_id,
-			final long url_id) {
-		final ContentValues values = new ContentValues();
-		values.put(TimelineConstant.T_ID, twit_id);
-		values.put(TimelineConstant.U_ID, url_id);
-		return values;
-	}
-
-	private class AsyncFetch extends AsyncTask<Void, Void, List<Status>> {
+	private class AsyncFetch extends AsyncTask<Paging, Void, List<Status>> {
 
 		@Override
-		protected List<twitter4j.Status> doInBackground(Void... params) {
-			Paging paging = new Paging(1, 40);
+		protected List<twitter4j.Status> doInBackground(Paging... params) {
 			try {
 				List<twitter4j.Status> statuses = mTwitter
-						.getHomeTimeline(paging);
+						.getHomeTimeline(params[0]);
 				return statuses;
 			} catch (TwitterException e) {
 				e.printStackTrace();
@@ -204,48 +284,15 @@ public class TwitterableImp implements Twitterable {
 		protected void onPostExecute(List<twitter4j.Status> statuses) {
 			if (null != statuses) {
 				for (twitter4j.Status status : statuses) {
-					long status_id = status.getId();
-					int ret = updateTwitEntryInDB(status);
-					/* if not updating, store all entities */
-					if (ret == 0) {
-						/* User Mentions Entity */
-						UserMentionEntity[] mentions = status
-								.getUserMentionEntities();
-						if (mentions.length > 0) {
-							for (UserMentionEntity mention : mentions) {
-								int mention_ret = insertMentionEntity2DB(mention);
-								insertTwitMentions2DB(getContentValuesForTwitMentions(
-										status_id, mention_ret));
-							}
-						}
-						/* HashTag Entity */
-						HashtagEntity[] hashtags = status.getHashtagEntities();
-						if (hashtags.length > 0) {
-							for (HashtagEntity hashtag : hashtags) {
-								int hashtag_ret = insertHashTagEntity2DB(hashtag);
-								insertTwitHashtag2DB(getContentValuesForTwitHashtags(
-										status_id, hashtag_ret));
-							}
-						}
-						/* URL Entity */
-						URLEntity[] urls = status.getURLEntities();
-						if (urls.length > 0) {
-							for (URLEntity url : urls) {
-								int url_ret = insertUrlEntity2DB(url);
-								insertTwitUrl2DB(getContentValuesForTwitUrls(
-										status_id, url_ret));
-							}
-						}
-						/* Media Entity */
-						// MediaEntity[] medias = status.getMediaEntities();
-						// if (medias.length > 0) {
-						// for (MediaEntity media : medias) {
-						// }
-						// }
-					}
+					updateTwitEntryInDB(status);
 				}
 				super.onPostExecute(statuses);
 			}
 		}
+	}
+
+	@Override
+	public void fetchStatus() {
+		new AsyncFetch().execute(new Paging());
 	}
 }

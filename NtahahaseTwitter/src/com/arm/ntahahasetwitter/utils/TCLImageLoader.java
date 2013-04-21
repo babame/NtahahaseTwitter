@@ -35,7 +35,7 @@ public class TCLImageLoader {
 		ActivityManager am = (ActivityManager) context
 				.getSystemService(Context.ACTIVITY_SERVICE);
 		int memoryClass = am.getMemoryClass() * 1024 * 1024;
-		cache = new TCLruCache(memoryClass / 8);
+		cache = new TCLruCache(memoryClass);
 		File cacheDir = Utils.getExternalCacheDir(context);
 		new InitDiskCacheTask().execute(cacheDir);
 	}

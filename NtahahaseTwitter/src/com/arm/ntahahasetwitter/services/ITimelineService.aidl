@@ -5,5 +5,6 @@ package com.arm.ntahahasetwitter.services;
 */
 
 interface ITimelineService {
-	void fetchStatus();
+	void futchStatus();
+	void fetchStatus(int page, int count, long sinceId, long maxId);
 }

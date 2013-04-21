@@ -27,7 +27,8 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+		prefs = PreferenceManager
+				.getDefaultSharedPreferences(getApplicationContext());
 		loginIfSharedPreferencesIsEmpty();
 		Log.i(TAG, "onCreate()");
 	}
@@ -37,20 +38,6 @@ public class MainActivity extends Activity {
 		if (null == userToken) {
 			new AuthUserAsync().execute();
 		} else {
-			/*
-			 * user.moveToFirst(); do { String userName =
-			 * user.getString(user.getColumnIndex(Constant.U_NAME)); String
-			 * userScreenName =
-			 * user.getString(user.getColumnIndex(Constant.U_SCREEN_NAME));
-			 * byte[] userPict =
-			 * user.getBlob(user.getColumnIndex(Constant.U_PROFILE_PICT));
-			 * Bitmap bitmap = BitmapFactory.decodeByteArray(userPict, 0,
-			 * userPict.length); Log.d(TAG,
-			 * String.format("User Name: %s\nScreen Name: %s", userName,
-			 * userScreenName)); txt_hello.setText(userName + "(@" +
-			 * userScreenName + ")"); img_userPict.setImageBitmap(bitmap); }
-			 * while (user.moveToNext()); user.close();
-			 */
 			navigateToTimeline();
 		}
 	}
@@ -63,6 +50,7 @@ public class MainActivity extends Activity {
 
 	class AuthUserAsync extends AsyncTask<Void, Void, String> {
 		private boolean authDone = false;
+
 		public boolean getListDone() {
 			return authDone;
 		}
@@ -91,24 +79,48 @@ public class MainActivity extends Activity {
 			new TwitterDialog(MainActivity.this, result, new DialogListener() {
 
 				@Override
-				public void onComplete(String url) {
-					Uri uri = Uri.parse(url);
-					String verifier = uri.getQueryParameter("oauth_verifier");
-					try {
-						// Get the access token
-						AccessToken accessToken = twitter.getOAuthAccessToken(
-								requestToken, verifier);
-						String token = accessToken.getToken();
-						String tokenSecret = accessToken.getTokenSecret();
-						Editor edit = prefs.edit();
-						edit.putString(Constant.ACCESS_TOKEN, token);
-						edit.putString(Constant.CONSUMER_SECRET, tokenSecret);
-						edit.commit();
-					} catch (Exception e) {
-						// Check log for login errors
-						Log.e(TAG, "Caught Exception: " + e.getMessage());
+				public void onComplete(final String url) {
+					CookieSyncManager.getInstance().sync();
+					final Object syncToken = new Object();
+					Thread t = new Thread(new Runnable() {
+						
+						@Override
+						public void run() {
+							synchronized (syncToken) {
+								Uri uri = Uri.parse(url);
+								String verifier = uri
+										.getQueryParameter("oauth_verifier");
+									// Get the access token
+									AccessToken accessToken;
+									try {
+										accessToken = twitter
+												.getOAuthAccessToken(requestToken,
+														verifier);
+										String token = accessToken.getToken();
+										String tokenSecret = accessToken
+												.getTokenSecret();
+										Editor edit = prefs.edit();
+										edit.putString(Constant.ACCESS_TOKEN, token);
+										edit.putString(Constant.CONSUMER_SECRET,
+												tokenSecret);
+										edit.commit();
+									} catch (TwitterException e) {
+										Log.e(TAG, "Caught TwitterException: " + e.getMessage());
+									} finally {
+										syncToken.notify();
+									}
+							}
+						}
+					});
+					t.start();
+					synchronized (syncToken) {
+						try {
+							syncToken.wait();
+							navigateToTimeline();
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
 					}
-					navigateToTimeline();
 				}
 
 				@Override
