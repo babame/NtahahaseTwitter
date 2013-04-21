@@ -6,6 +6,7 @@ package com.arm.ntahahasetwitter;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -37,21 +38,21 @@ public class StatusActivity extends SherlockActivity {
 		super.onCreate(savedInstanceState);
 		mApp = (NtahahaseApp) getApplication();
 		mNtahahaseService = mApp.getServiceIntent();
+		Uri statusUri = Uri.parse("status");
+		mNtahahaseService.setData(statusUri);
 		registerServiceConnection();
 		setContentView(R.layout.status_activity);
 		edit_status = (EditText) findViewById(R.id.edit_status);
 		if (BuildConfig.DEBUG)
 			Log.i(TAG, "onCreate");
 	}
-	
-	
 
+	
 	@Override
-	protected void onDestroy() {
-		super.onDestroy();
+	protected void onStop() {
+		super.onStop();
 		unbindService(mServiceConnection);
 	}
-
 
 
 	@Override
@@ -76,6 +77,7 @@ public class StatusActivity extends SherlockActivity {
 		statusAdapter.UpdateStatus(status);
 		if (BuildConfig.DEBUG)
 			Log.d(TAG, "status: " + status);
+		StatusActivity.this.finish();
 		return true;
 	}
 	

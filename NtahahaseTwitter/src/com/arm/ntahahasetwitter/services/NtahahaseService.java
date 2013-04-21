@@ -15,6 +15,8 @@ public class NtahahaseService extends Service {
 
 	private ITimelineService.Stub mService2Timeline;
 
+	private IStatusUpdateService.Stub mService2Status;
+
 	private Twitterable twitterable;
 	private NtahahaseConfig mConfig;
 	private NtahahaseApp mApp;
@@ -25,6 +27,9 @@ public class NtahahaseService extends Service {
 	@Override
 	public IBinder onBind(Intent i) {
 		Log.i(TAG, "onBind");
+		String status = i.getDataString();
+		if (status != null)
+			return mService2Status;
 		return mService2Timeline;
 	}
 
@@ -36,6 +41,7 @@ public class NtahahaseService extends Service {
 				PreferenceManager
 						.getDefaultSharedPreferences(getApplicationContext()));
 		createTimelineStub();
+		createStatusUpdateStub();
 		mUpdater = new Upadater();
 		Log.i(TAG, "onCreate");
 	}
@@ -43,7 +49,7 @@ public class NtahahaseService extends Service {
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
-		
+
 		runFlag = false;
 		mUpdater.interrupt();
 		mUpdater = null;
@@ -73,6 +79,16 @@ public class NtahahaseService extends Service {
 			@Override
 			public void futchStatus() throws RemoteException {
 				twitterable.fetchStatus();
+			}
+		};
+	}
+
+	private void createStatusUpdateStub() {
+		mService2Status = new IStatusUpdateService.Stub() {
+
+			@Override
+			public void updateStatus(String status) throws RemoteException {
+				twitterable.updateStatus(status);
 			}
 		};
 	}
