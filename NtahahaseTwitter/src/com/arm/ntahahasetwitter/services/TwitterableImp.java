@@ -73,6 +73,11 @@ public class TwitterableImp implements Twitterable {
 			paging.setMaxId(maxId);
 		new AsyncFetch().execute(paging);
 	}
+	
+	@Override
+	public void updateStatus(String status) {
+		new AsyncUpdateStatus().execute(status);
+	}
 
 	private int updateTwitEntryInDB(final Status status) {
 		final ContentValues values = getContentValuesForTimelineEntry(status);
@@ -294,5 +299,25 @@ public class TwitterableImp implements Twitterable {
 	@Override
 	public void fetchStatus() {
 		new AsyncFetch().execute(new Paging());
+	}
+	
+	private class AsyncUpdateStatus extends AsyncTask<String, Void, Integer> {
+
+		@Override
+		protected Integer doInBackground(String... params) {
+			try {
+				mTwitter.updateStatus(params[0]);
+				return 1;
+			} catch (TwitterException e) {
+				Log.d(TAG, "caught TwitterException: " + e.getMessage());
+				return 0;
+			}
+		}
+
+		@Override
+		protected void onPostExecute(Integer result) {
+			super.onPostExecute(result);
+			Log.d(TAG, "result: " + result);
+		}
 	}
 }
