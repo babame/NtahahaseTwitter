@@ -21,7 +21,6 @@ import com.actionbarsherlock.view.MenuItem;
 import com.arm.ntahahasetwitter.data.TimelineProvider;
 import com.arm.ntahahasetwitter.data.TimelineProvider.TimelineConstant;
 import com.arm.ntahahasetwitter.services.ITimelineService;
-import com.arm.ntahahasetwitter.services.NtahahaseService;
 import com.arm.ntahahasetwitter.services.TimelineServiceAdapter;
 import com.arm.ntahahasetwitter.utils.TCLImageLoader;
 
@@ -52,6 +51,7 @@ public class TimelineActivity extends SherlockFragmentActivity implements
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_timeline);
 		mApp = (NtahahaseApp) getApplication();
+		mNtahahaseService = mApp.getServiceIntent();
 		lTimeline = (ListView) findViewById(R.id.list_timeline);
 		imageLoader = new TCLImageLoader(getApplicationContext());
 
@@ -86,7 +86,7 @@ public class TimelineActivity extends SherlockFragmentActivity implements
 			}
 		});
 		getSupportLoaderManager().initLoader(0, null, this);
-		registerNtahahaseService();
+		registerServiceConnection();
 	}
 
 	@Override
@@ -155,29 +155,23 @@ public class TimelineActivity extends SherlockFragmentActivity implements
 		adapter.swapCursor(null);
 	}
 
-	private void registerNtahahaseService() {
-		mNtahahaseService = new Intent(getApplicationContext(),
-				NtahahaseService.class);
+	private void registerServiceConnection() {
+		if (mApp.isServiceRunning())
+			mServiceConnection = new ServiceConnection() {
 
-		mNtahahaseService
-				.setAction("com.arm.ntahahasetwitter.NTAHAHASESERVICE");
-		mServiceConnection = new ServiceConnection() {
+				@Override
+				public void onServiceDisconnected(ComponentName name) {
+					Log.i(TAG, "called onServiceDisconnected()");
+				}
 
-			@Override
-			public void onServiceDisconnected(ComponentName name) {
-				Log.i(TAG, "called onServiceDisconnected()");
-			}
-
-			@Override
-			public void onServiceConnected(ComponentName name, IBinder service) {
-				timelineAdapter = new TimelineServiceAdapter(
-						ITimelineService.Stub.asInterface(service));
-				if (BuildConfig.DEBUG)
-					Log.i(TAG, "onServiceConnected()");
-			}
-		};
-		if (!mApp.isServiceRunning())
-			startService(mNtahahaseService);
-		Log.i(TAG, "called startNtahahaseService");
+				@Override
+				public void onServiceConnected(ComponentName name,
+						IBinder service) {
+					timelineAdapter = new TimelineServiceAdapter(
+							ITimelineService.Stub.asInterface(service));
+					if (BuildConfig.DEBUG)
+						Log.i(TAG, "onServiceConnected()");
+				}
+			};
 	}
 }
