@@ -4,12 +4,13 @@
     <string name="app_name">NtahahaseTwitter</string>
     <string name="desc_userPict">User Picture</string>
     <string name="label_timeline">Timeline</string>
+    
+    <!-- Content Description -->
     <string name="cDesc_userImg">User Image</string>
     <string name="cDesc_twitPict">Status Picture</string>
-
-    <string name="open">Open</string>
-    <string name="googlePlay">Google Play</string>
-    <string name="uninstall">Uninstall</string>
+    <string name="cDesc_tab_home">Home Tab Button</string>
+    <string name="cDesc_tab_settings">Settings Tab Button</string>
+    
     <string name="statusHint">Please enter your 140-character status</string>
     <string name="buttonUpdateStatus">Update</string>
     <string name="label_status">Status Update</string>
