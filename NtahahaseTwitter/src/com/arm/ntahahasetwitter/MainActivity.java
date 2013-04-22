@@ -43,8 +43,6 @@ public class MainActivity extends Activity {
 	}
 
 	private void navigateToTimeline() {
-		NtahahaseApp mApp = (NtahahaseApp) getApplication();
-		mApp.registerNtahahaseService();
 		Intent timeline = new Intent(this, TimelineActivity.class);
 		startActivity(timeline);
 		this.finish();
