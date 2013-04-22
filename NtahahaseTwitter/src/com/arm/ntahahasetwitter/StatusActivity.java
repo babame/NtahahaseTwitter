@@ -3,20 +3,20 @@
  */
 package com.arm.ntahahasetwitter;
 
-import android.content.ComponentName;
 import android.content.Intent;
-import android.content.ServiceConnection;
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.Toast;
 
+import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.app.SherlockActivity;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
-import com.arm.ntahahasetwitter.services.IStatusUpdateService;
-import com.arm.ntahahasetwitter.services.StatusServiceAdapter;
 
 /**
  * @author adrianbabame
@@ -24,80 +24,69 @@ import com.arm.ntahahasetwitter.services.StatusServiceAdapter;
  */
 public class StatusActivity extends SherlockActivity {
 	private static final String TAG = StatusActivity.class.getSimpleName();
+
 	private EditText edit_status;
-	
-	private NtahahaseApp mApp;
-	
-	private Intent mNtahahaseService;
-	private ServiceConnection mServiceConnection;
-	
-	private StatusServiceAdapter statusAdapter;
+
+	private boolean isLocationEnabled;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		mApp = (NtahahaseApp) getApplication();
-		mNtahahaseService = mApp.getServiceIntent();
-		Uri statusUri = Uri.parse("status");
-		mNtahahaseService.setData(statusUri);
-		registerServiceConnection();
+		ActionBar ab = getSherlock().getActionBar();
+		LayoutInflater li = LayoutInflater.from(this);
+		View customView = li.inflate(R.layout.custom_bar, null);
+		ImageButton btn_send = (ImageButton) customView
+				.findViewById(R.id.bar_settings);
+		btn_send.setImageResource(R.drawable.ic_menu_send);
+		btn_send.setOnClickListener(new OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				String status = edit_status.getText().toString();
+				if (status.length() > 0) {
+					Intent i = getIntent();
+					i.putExtra("text", status);
+					i.putExtra("isLocationEnabled", isLocationEnabled);
+					setResult(RESULT_OK, i);
+					finish();
+				} else {
+					Toast.makeText(getApplicationContext(),
+							"The text is empty", Toast.LENGTH_SHORT).show();
+				}
+			}
+		});
+		ab.setCustomView(customView);
 		setContentView(R.layout.status_activity);
 		edit_status = (EditText) findViewById(R.id.edit_status);
 		if (BuildConfig.DEBUG)
 			Log.i(TAG, "onCreate");
 	}
 
-	
-	@Override
-	protected void onStop() {
-		super.onStop();
-		unbindService(mServiceConnection);
-	}
-
-
-	@Override
-	protected void onResume() {
-		super.onResume();
-		bindService(mNtahahaseService, mServiceConnection, BIND_AUTO_CREATE);
-		Log.i(TAG, "onResume");
-	}
-
-
-
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		menu.add("Send").setIcon(R.drawable.ic_menu_send)
-				.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+		menu.add(0, 0, 0, "Location").setIcon(R.drawable.ic_menu_location)
+				.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 		return true;
 	}
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
-		String status = edit_status.getText().toString();
-		statusAdapter.UpdateStatus(status);
-		if (BuildConfig.DEBUG)
-			Log.d(TAG, "status: " + status);
-		StatusActivity.this.finish();
+		switch (item.getItemId()) {
+		case 0:
+			isLocationEnabled = true;
+			break;
+
+		default:
+			break;
+		}
 		return true;
 	}
-	
-	private void registerServiceConnection() {
-		if (mApp.isServiceRunning())
-			mServiceConnection = new ServiceConnection() {
 
-				@Override
-				public void onServiceDisconnected(ComponentName name) {
-					Log.i(TAG, "called onServiceDisconnected()");
-				}
-
-				@Override
-				public void onServiceConnected(ComponentName name,
-						IBinder service) {
-					statusAdapter = new StatusServiceAdapter(
-							IStatusUpdateService.Stub.asInterface(service));
-					if (BuildConfig.DEBUG)
-						Log.i(TAG, "onServiceConnected()");
-				}
-			};
+	@Override
+	public void onBackPressed() {
+		super.onBackPressed();
+		Intent i = getIntent();
+		setResult(RESULT_CANCELED, i);
+		finish();
 	}
 }

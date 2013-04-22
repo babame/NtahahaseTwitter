@@ -9,13 +9,12 @@ import android.util.Log;
 
 import com.arm.ntahahasetwitter.NtahahaseApp;
 import com.arm.ntahahasetwitter.NtahahaseConfig;
+import com.arm.ntahahasetwitter.utils.GPSTracker;
 
 public class NtahahaseService extends Service {
 	private static final String TAG = NtahahaseService.class.getSimpleName();
 
 	private ITimelineService.Stub mService2Timeline;
-
-	private IStatusUpdateService.Stub mService2Status;
 
 	private Twitterable twitterable;
 	private NtahahaseConfig mConfig;
@@ -27,9 +26,6 @@ public class NtahahaseService extends Service {
 	@Override
 	public IBinder onBind(Intent i) {
 		Log.i(TAG, "onBind");
-		String status = i.getDataString();
-		if (status != null)
-			return mService2Status;
 		return mService2Timeline;
 	}
 
@@ -41,7 +37,6 @@ public class NtahahaseService extends Service {
 				PreferenceManager
 						.getDefaultSharedPreferences(getApplicationContext()));
 		createTimelineStub();
-		createStatusUpdateStub();
 		mUpdater = new Upadater();
 		Log.i(TAG, "onCreate");
 	}
@@ -80,15 +75,29 @@ public class NtahahaseService extends Service {
 			public void futchStatus() throws RemoteException {
 				twitterable.fetchStatus();
 			}
-		};
-	}
-
-	private void createStatusUpdateStub() {
-		mService2Status = new IStatusUpdateService.Stub() {
 
 			@Override
-			public void updateStatus(String status) throws RemoteException {
-				twitterable.updateStatus(status);
+			public void updateStatus(final String status,
+					final boolean isLocationEnabled) throws RemoteException {
+				final GPSTracker mGpsTracker = new GPSTracker(
+						getApplicationContext());
+				Thread t = new Thread(new Runnable() {
+
+					@Override
+					public void run() {
+						double latitude = 0;
+						double longitude = 0;
+						if (isLocationEnabled && mGpsTracker.canGetLocation()) {
+							latitude = mGpsTracker.getLatitude();
+							longitude = mGpsTracker.getLongitude();
+							Log.d(TAG, "latitude: " + latitude + " longitude: "
+									+ longitude);
+							twitterable.updateStatus(status, latitude,
+									longitude);
+						}
+					}
+				});
+				t.start();
 			}
 		};
 	}
@@ -113,7 +122,5 @@ public class NtahahaseService extends Service {
 				}
 			}
 		}
-
 	}
-
 }

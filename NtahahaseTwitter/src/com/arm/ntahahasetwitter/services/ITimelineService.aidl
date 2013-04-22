@@ -7,4 +7,5 @@ package com.arm.ntahahasetwitter.services;
 interface ITimelineService {
 	void futchStatus();
 	void fetchStatus(int page, int count, long sinceId, long maxId);
+	void updateStatus(String status, boolean isLocationEnabled);
 }

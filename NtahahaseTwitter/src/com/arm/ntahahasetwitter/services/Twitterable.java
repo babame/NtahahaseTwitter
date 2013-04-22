@@ -6,5 +6,5 @@ public interface Twitterable {
 	void fetchStatus(int page, int count, long sinceId, long maxId);
 	void fetchStatus();
 	
-	void updateStatus(String status);
+	void updateStatus(String status, double latitude, double longitude);
 }

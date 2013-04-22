@@ -6,29 +6,35 @@ import android.content.ServiceConnection;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v4.widget.CursorAdapter;
 import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
 import android.widget.AbsListView;
 import android.widget.AbsListView.OnScrollListener;
+import android.widget.ImageButton;
 import android.widget.ListView;
 
-import com.actionbarsherlock.app.SherlockFragmentActivity;
+import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
+import com.arm.ntahahasetwitter.base.SampleListFragment;
+import com.arm.ntahahasetwitter.base.SherlockSlidingFragmentActivity;
 import com.arm.ntahahasetwitter.data.TimelineProvider;
 import com.arm.ntahahasetwitter.data.TimelineProvider.TimelineConstant;
 import com.arm.ntahahasetwitter.services.ITimelineService;
+import com.arm.ntahahasetwitter.services.NtahahaseService;
 import com.arm.ntahahasetwitter.services.TimelineServiceAdapter;
 import com.arm.ntahahasetwitter.utils.TCLImageLoader;
 
-public class TimelineActivity extends SherlockFragmentActivity implements
+public class TimelineActivity extends SherlockSlidingFragmentActivity implements
 		LoaderManager.LoaderCallbacks<Cursor> {
 	private static final String TAG = TimelineActivity.class.getSimpleName();
-
-	private NtahahaseApp mApp;
 
 	private ServiceConnection mServiceConnection;
 	private Intent mNtahahaseService;
@@ -49,12 +55,33 @@ public class TimelineActivity extends SherlockFragmentActivity implements
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		ActionBar ab = getSherlock().getActionBar();
+		LayoutInflater li = LayoutInflater.from(this);
+		View customView = li.inflate(R.layout.custom_bar, null);
+		ab.setCustomView(customView);
+		// set the Behind View
+		setBehindContentView(R.layout.frame);
+		FragmentTransaction t = getSupportFragmentManager().beginTransaction();
+		t.add(R.id.frame, new SampleListFragment());
+		t.commit();
+
+		// customize the SlidingMenu
+		this.setSlidingActionBarEnabled(false);
+		getSlidingMenu().setShadowWidthRes(R.dimen.shadow_width);
+		getSlidingMenu().setShadowDrawable(R.drawable.shadow);
+		getSlidingMenu().setBehindOffsetRes(R.dimen.actionbar_home_width);
+		getSlidingMenu().setBehindScrollScale(0.25f);
 		setContentView(R.layout.activity_timeline);
-		mApp = (NtahahaseApp) getApplication();
-		mNtahahaseService = mApp.getServiceIntent();
+		ImageButton btn_home = (ImageButton) customView.findViewById(R.id.bar_home);
+		btn_home.setOnClickListener(new OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+				toggle();
+			}
+		});
 		lTimeline = (ListView) findViewById(R.id.list_timeline);
 		imageLoader = new TCLImageLoader(getApplicationContext());
-
 		adapter = new TimelineAdapter(this, 0, null,
 				CursorAdapter.FLAG_REGISTER_CONTENT_OBSERVER, imageLoader);
 		lTimeline.setAdapter(adapter);
@@ -85,8 +112,8 @@ public class TimelineActivity extends SherlockFragmentActivity implements
 				}
 			}
 		});
-		getSupportLoaderManager().initLoader(0, null, this);
 		registerServiceConnection();
+		getSupportLoaderManager().initLoader(0, null, this);
 	}
 
 	@Override
@@ -129,12 +156,32 @@ public class TimelineActivity extends SherlockFragmentActivity implements
 		case 0:
 			Intent statusIntent = new Intent(getApplicationContext(),
 					StatusActivity.class);
-			startActivity(statusIntent);
+			startActivityForResult(statusIntent, 1);
 			break;
 		default:
 			break;
 		}
 		return true;
+	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		if (resultCode == RESULT_OK) {
+			if (data.getExtras().containsKey("text")) {
+				if (BuildConfig.DEBUG)
+					Log.d(TAG,
+							"statusText: "
+									+ data.getStringExtra("text")
+									+ "\nisLocationEnabled: "
+									+ data.getBooleanExtra("isLocationEnabled",
+											false));
+				timelineAdapter.updateStatus(data.getStringExtra("text"),
+						data.getBooleanExtra("isLocationEnabled", false));
+			}
+		} else {
+			Log.d(TAG, "canceled");
+		}
 	}
 
 	@Override
@@ -156,22 +203,27 @@ public class TimelineActivity extends SherlockFragmentActivity implements
 	}
 
 	private void registerServiceConnection() {
-		if (mApp.isServiceRunning())
-			mServiceConnection = new ServiceConnection() {
+		mNtahahaseService = new Intent(getApplicationContext(),
+				NtahahaseService.class);
+		mNtahahaseService
+				.setAction("com.arm.ntahahasetwitter.NTAHAHASESERVICE");
+		mServiceConnection = new ServiceConnection() {
 
-				@Override
-				public void onServiceDisconnected(ComponentName name) {
-					Log.i(TAG, "called onServiceDisconnected()");
-				}
+			@Override
+			public void onServiceDisconnected(ComponentName name) {
+				Log.i(TAG, "called onServiceDisconnected()");
+			}
 
-				@Override
-				public void onServiceConnected(ComponentName name,
-						IBinder service) {
-					timelineAdapter = new TimelineServiceAdapter(
-							ITimelineService.Stub.asInterface(service));
-					if (BuildConfig.DEBUG)
-						Log.i(TAG, "onServiceConnected()");
-				}
-			};
+			@Override
+			public void onServiceConnected(ComponentName name, IBinder service) {
+				timelineAdapter = new TimelineServiceAdapter(
+						ITimelineService.Stub.asInterface(service));
+				if (BuildConfig.DEBUG)
+					Log.i(TAG, "onServiceConnected()");
+			}
+		};
+		NtahahaseApp mApp = (NtahahaseApp) getApplication();
+		if (!mApp.isServiceRunning())
+			startService(mNtahahaseService);
 	}
 }

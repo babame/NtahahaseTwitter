@@ -9,10 +9,12 @@ import java.io.ObjectOutputStream;
 import java.io.StreamCorruptedException;
 import java.util.List;
 
+import twitter4j.GeoLocation;
 import twitter4j.HashtagEntity;
 import twitter4j.MediaEntity;
 import twitter4j.Paging;
 import twitter4j.Status;
+import twitter4j.StatusUpdate;
 import twitter4j.Twitter;
 import twitter4j.TwitterException;
 import twitter4j.TwitterFactory;
@@ -73,10 +75,13 @@ public class TwitterableImp implements Twitterable {
 			paging.setMaxId(maxId);
 		new AsyncFetch().execute(paging);
 	}
-	
+
 	@Override
-	public void updateStatus(String status) {
-		new AsyncUpdateStatus().execute(status);
+	public void updateStatus(String status, double latitude, double longitude) {
+		StatusUpdate statusUpdate = new StatusUpdate(status);
+		if (latitude != 0 && longitude != 0)
+			statusUpdate.setLocation(new GeoLocation(latitude, longitude));
+		new AsyncUpdateStatus().execute(statusUpdate);
 	}
 
 	private int updateTwitEntryInDB(final Status status) {
@@ -125,7 +130,8 @@ public class TwitterableImp implements Twitterable {
 				mentionEntities = entry.getRetweetedStatus()
 						.getUserMentionEntities();
 			if (entry.getRetweetedStatus().getHashtagEntities().length > 0)
-				hashTagEntities = entry.getRetweetedStatus().getHashtagEntities();
+				hashTagEntities = entry.getRetweetedStatus()
+						.getHashtagEntities();
 		} else {
 			tokens = entry.getText().split(" ");
 			if (entry.getUserMentionEntities().length > 0)
@@ -149,7 +155,8 @@ public class TwitterableImp implements Twitterable {
 						builder.append(heText);
 						builder.append("^^");
 						if (token.length() > heText.length())
-							builder.append(token.substring(heStart + heText.length(), token.length()));
+							builder.append(token.substring(
+									heStart + heText.length(), token.length()));
 						found = true;
 						break;
 					}
@@ -161,13 +168,13 @@ public class TwitterableImp implements Twitterable {
 					if (umeName != null && token.contains(umeName)) {
 						int umeStart = token.indexOf(umeName);
 						if (umeStart > 0)
-							builder.append(token.substring(0,
-									umeStart));
+							builder.append(token.substring(0, umeStart));
 						builder.append("*#");
 						builder.append(umeName);
 						builder.append("*#");
 						if (token.length() > umeName.length())
-							builder.append(token.substring(umeStart + umeName.length(), token.length()));
+							builder.append(token.substring(
+									umeStart + umeName.length(), token.length()));
 						found = true;
 						break;
 					}
@@ -300,12 +307,19 @@ public class TwitterableImp implements Twitterable {
 	public void fetchStatus() {
 		new AsyncFetch().execute(new Paging());
 	}
-	
-	private class AsyncUpdateStatus extends AsyncTask<String, Void, Integer> {
+
+	private class AsyncUpdateStatus extends
+			AsyncTask<StatusUpdate, Void, Integer> {
 
 		@Override
-		protected Integer doInBackground(String... params) {
+		protected Integer doInBackground(StatusUpdate... params) {
 			try {
+
+				if (BuildConfig.DEBUG)
+					Log.d(TAG, "latitude: "
+							+ params[0].getLocation().getLatitude()
+							+ "\nlongitude: "
+							+ params[0].getLocation().getLongitude());
 				mTwitter.updateStatus(params[0]);
 				return 1;
 			} catch (TwitterException e) {

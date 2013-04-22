@@ -26,5 +26,13 @@ public class TimelineServiceAdapter {
 			Log.e(TAG, "caught RemoteException: " + e.getMessage());
 		}
 	}
+	
+	public void updateStatus(String status, boolean isLocationEnabled) {
+		try {
+			timelineServiceStub.updateStatus(status, isLocationEnabled);
+		} catch (RemoteException e) {
+			Log.e(TAG, "caught RemoteException: " + e.getMessage());
+		}
+	}
 
 }
