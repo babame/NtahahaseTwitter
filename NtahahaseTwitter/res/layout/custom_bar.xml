@@ -23,6 +23,6 @@
         android:background="?attr/actionBarItemBackground"
         android:contentDescription="@string/cDesc_tab_settings"
         android:scaleType="centerInside"
-        android:src="@drawable/ic_tab_settings" />
+        android:src="@drawable/ic_tab_refresh" />
 
 </RelativeLayout>
