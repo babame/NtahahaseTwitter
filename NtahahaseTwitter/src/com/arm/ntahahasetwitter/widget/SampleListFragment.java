@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.arm.ntahahasetwitter.base;
+package com.arm.ntahahasetwitter.widget;
 
 /**
  * @author adrianbabame
