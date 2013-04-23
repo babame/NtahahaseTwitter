@@ -10,6 +10,8 @@ public class Constant {
 	public static final String ACCESS_TOKEN = "access_token";
 	public static final String CONSUMER_SECRET = "consumer_secret";
 	
+	public static final String TWITPIC_APIKEY = "1aaf001a20f2de0d63079c9968b1dc94";
+	
 	/**
 	 * User Table
 	 */
