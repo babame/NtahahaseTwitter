@@ -23,14 +23,14 @@ import android.widget.ListView;
 import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
-import com.arm.ntahahasetwitter.base.SampleListFragment;
-import com.arm.ntahahasetwitter.base.SherlockSlidingFragmentActivity;
 import com.arm.ntahahasetwitter.data.TimelineProvider;
 import com.arm.ntahahasetwitter.data.TimelineProvider.TimelineConstant;
 import com.arm.ntahahasetwitter.services.ITimelineService;
 import com.arm.ntahahasetwitter.services.NtahahaseService;
 import com.arm.ntahahasetwitter.services.TimelineServiceAdapter;
 import com.arm.ntahahasetwitter.utils.TCLImageLoader;
+import com.arm.ntahahasetwitter.widget.SampleListFragment;
+import com.arm.ntahahasetwitter.widget.SherlockSlidingFragmentActivity;
 
 public class TimelineActivity extends SherlockSlidingFragmentActivity implements
 		LoaderManager.LoaderCallbacks<Cursor> {
@@ -55,31 +55,7 @@ public class TimelineActivity extends SherlockSlidingFragmentActivity implements
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		ActionBar ab = getSherlock().getActionBar();
-		LayoutInflater li = LayoutInflater.from(this);
-		View customView = li.inflate(R.layout.custom_bar, null);
-		ab.setCustomView(customView);
-		// set the Behind View
-		setBehindContentView(R.layout.frame);
-		FragmentTransaction t = getSupportFragmentManager().beginTransaction();
-		t.add(R.id.frame, new SampleListFragment());
-		t.commit();
-
-		// customize the SlidingMenu
-		this.setSlidingActionBarEnabled(false);
-		getSlidingMenu().setShadowWidthRes(R.dimen.shadow_width);
-		getSlidingMenu().setShadowDrawable(R.drawable.shadow);
-		getSlidingMenu().setBehindOffsetRes(R.dimen.actionbar_home_width);
-		getSlidingMenu().setBehindScrollScale(0.25f);
-		setContentView(R.layout.activity_timeline);
-		ImageButton btn_home = (ImageButton) customView.findViewById(R.id.bar_home);
-		btn_home.setOnClickListener(new OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-				toggle();
-			}
-		});
+		setSlidingMenu();
 		lTimeline = (ListView) findViewById(R.id.list_timeline);
 		imageLoader = new TCLImageLoader(getApplicationContext());
 		adapter = new TimelineAdapter(this, 0, null,
@@ -144,8 +120,8 @@ public class TimelineActivity extends SherlockSlidingFragmentActivity implements
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		menu.add(0, 0, 0, "twit").setShowAsAction(
-				MenuItem.SHOW_AS_ACTION_ALWAYS);
+		menu.add(0, 0, 0, "twit").setIcon(R.drawable.ic_tab_tweet)
+				.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
 		return true;
 	}
 
@@ -176,8 +152,13 @@ public class TimelineActivity extends SherlockSlidingFragmentActivity implements
 									+ "\nisLocationEnabled: "
 									+ data.getBooleanExtra("isLocationEnabled",
 											false));
-				timelineAdapter.updateStatus(data.getStringExtra("text"),
-						data.getBooleanExtra("isLocationEnabled", false));
+				if (data.getExtras().containsKey("media_path"))
+					timelineAdapter.updateStatus(data.getStringExtra("text"),
+							data.getStringExtra("media_path"),
+							data.getBooleanExtra("isLocationEnabled", false));
+				else
+					timelineAdapter.updateStatus(data.getStringExtra("text"), null, 
+							data.getBooleanExtra("isLocationEnabled", false));
 			}
 		} else {
 			Log.d(TAG, "canceled");
@@ -225,5 +206,34 @@ public class TimelineActivity extends SherlockSlidingFragmentActivity implements
 		NtahahaseApp mApp = (NtahahaseApp) getApplication();
 		if (!mApp.isServiceRunning())
 			startService(mNtahahaseService);
+	}
+
+	private void setSlidingMenu() {
+		ActionBar ab = getSherlock().getActionBar();
+		LayoutInflater li = LayoutInflater.from(this);
+		View customView = li.inflate(R.layout.custom_bar, null);
+		ab.setCustomView(customView);
+		// set the Behind View
+		setBehindContentView(R.layout.frame);
+		FragmentTransaction t = getSupportFragmentManager().beginTransaction();
+		t.add(R.id.frame, new SampleListFragment());
+		t.commit();
+
+		// customize the SlidingMenu
+		this.setSlidingActionBarEnabled(false);
+		getSlidingMenu().setShadowWidthRes(R.dimen.shadow_width);
+		getSlidingMenu().setShadowDrawable(R.drawable.shadow);
+		getSlidingMenu().setBehindOffsetRes(R.dimen.actionbar_home_width);
+		getSlidingMenu().setBehindScrollScale(0.25f);
+		setContentView(R.layout.activity_timeline);
+		ImageButton btn_home = (ImageButton) customView
+				.findViewById(R.id.bar_home);
+		btn_home.setOnClickListener(new OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				toggle();
+			}
+		});
 	}
 }

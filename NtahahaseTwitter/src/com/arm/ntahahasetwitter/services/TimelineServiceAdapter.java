@@ -27,9 +27,9 @@ public class TimelineServiceAdapter {
 		}
 	}
 	
-	public void updateStatus(String status, boolean isLocationEnabled) {
+	public void updateStatus(String status, String filepath, boolean isLocationEnabled) {
 		try {
-			timelineServiceStub.updateStatus(status, isLocationEnabled);
+			timelineServiceStub.updateStatus(status, filepath, isLocationEnabled);
 		} catch (RemoteException e) {
 			Log.e(TAG, "caught RemoteException: " + e.getMessage());
 		}

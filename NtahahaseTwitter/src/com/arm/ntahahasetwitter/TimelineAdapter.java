@@ -38,7 +38,6 @@ public class TimelineAdapter extends SimpleCursorAdapter {
 		TextView textCreatedAt;
 		TextView textScreenName;
 		TextView textMessage;
-		ImageView imgTwitPict;
 	}
 
 	public enum RoundedCorners {

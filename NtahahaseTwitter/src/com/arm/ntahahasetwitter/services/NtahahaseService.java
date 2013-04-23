@@ -77,7 +77,7 @@ public class NtahahaseService extends Service {
 			}
 
 			@Override
-			public void updateStatus(final String status,
+			public void updateStatus(final String status, final String filepath, 
 					final boolean isLocationEnabled) throws RemoteException {
 				final GPSTracker mGpsTracker = new GPSTracker(
 						getApplicationContext());
@@ -92,9 +92,9 @@ public class NtahahaseService extends Service {
 							longitude = mGpsTracker.getLongitude();
 							Log.d(TAG, "latitude: " + latitude + " longitude: "
 									+ longitude);
-							twitterable.updateStatus(status, latitude,
-									longitude);
 						}
+						twitterable.updateStatus(status, filepath, latitude,
+								longitude);
 					}
 				});
 				t.start();

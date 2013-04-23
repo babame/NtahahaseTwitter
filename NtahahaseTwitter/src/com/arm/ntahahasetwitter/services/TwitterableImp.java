@@ -2,6 +2,7 @@ package com.arm.ntahahasetwitter.services;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
@@ -21,7 +22,12 @@ import twitter4j.TwitterFactory;
 import twitter4j.URLEntity;
 import twitter4j.UserMentionEntity;
 import twitter4j.auth.AccessToken;
+import twitter4j.auth.OAuthAuthorization;
+import twitter4j.conf.Configuration;
 import twitter4j.conf.ConfigurationBuilder;
+import twitter4j.media.ImageUpload;
+import twitter4j.media.ImageUploadFactory;
+import twitter4j.media.MediaProvider;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.net.Uri;
@@ -42,6 +48,8 @@ public class TwitterableImp implements Twitterable {
 
 	private ContentResolver mContentResolver;
 
+	protected AccessToken accessToken;
+
 	public TwitterableImp(NtahahaseConfig mConfig,
 			ContentResolver contentResolver) {
 		ConfigurationBuilder builder = new ConfigurationBuilder();
@@ -56,7 +64,7 @@ public class TwitterableImp implements Twitterable {
 
 		TwitterFactory factory = new TwitterFactory(builder.build());
 		mTwitter = factory.getInstance();
-		AccessToken accessToken = new AccessToken(mConfig.accessToken,
+		accessToken = new AccessToken(mConfig.accessToken,
 				mConfig.consumerSecret);
 		mTwitter.setOAuthAccessToken(accessToken);
 		mContentResolver = contentResolver;
@@ -77,7 +85,26 @@ public class TwitterableImp implements Twitterable {
 	}
 
 	@Override
-	public void updateStatus(String status, double latitude, double longitude) {
+	public void updateStatus(String status, String filepath, double latitude,
+			double longitude) {
+		if (null != filepath) {
+			ConfigurationBuilder mediaUploadBuilder = new ConfigurationBuilder();
+			mediaUploadBuilder.setOAuthConsumerKey(Constant.TWITTER_KEY);
+			mediaUploadBuilder.setOAuthConsumerSecret(Constant.TWITTER_SECRET);
+			mediaUploadBuilder.setMediaProviderAPIKey(Constant.TWITPIC_APIKEY);
+			Configuration conf = mediaUploadBuilder.build();
+			OAuthAuthorization auth = new OAuthAuthorization(conf);
+			auth.setOAuthAccessToken(accessToken);
+			ImageUpload upload = new ImageUploadFactory(conf).getInstance(
+					MediaProvider.TWITPIC, auth);
+			String url;
+			try {
+				url = upload.upload(new File(filepath), status);
+				status += " " + url;
+			} catch (TwitterException e) {
+				e.printStackTrace();
+			}
+		}
 		StatusUpdate statusUpdate = new StatusUpdate(status);
 		if (latitude != 0 && longitude != 0)
 			statusUpdate.setLocation(new GeoLocation(latitude, longitude));
@@ -314,12 +341,6 @@ public class TwitterableImp implements Twitterable {
 		@Override
 		protected Integer doInBackground(StatusUpdate... params) {
 			try {
-
-				if (BuildConfig.DEBUG)
-					Log.d(TAG, "latitude: "
-							+ params[0].getLocation().getLatitude()
-							+ "\nlongitude: "
-							+ params[0].getLocation().getLongitude());
 				mTwitter.updateStatus(params[0]);
 				return 1;
 			} catch (TwitterException e) {
